@@ -1,0 +1,73 @@
+!
+hostname CSRv3_Edge-PE
+!
+vrf definition Basic-SR-Handoff
+ rd 65430:3
+ !
+ address-family ipv4
+  route-target export 1201:1201
+  route-target import 1201:1201
+ exit-address-family
+!
+license boot level ax
+!
+interface Loopback0
+ ip address 10.253.201.1 255.255.255.255
+ ip ospf 1 area 0.0.0.0
+!
+interface Loopback1
+ vrf forwarding Basic-SR-Handoff
+ ip address 10.253.203.1 255.255.255.255
+!
+interface GigabitEthernet1
+ description MGMT Network AFDD_SR-MPLS_ACC_DVS
+ ip address 10.21.5.3 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet2
+ description To_CSRv2_DC-P
+ ip address 10.253.202.2 255.255.255.252
+ ip ospf 1 area 0.0.0.0
+ no shutdown
+!
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+ !
+ global-block 16000 23999
+ !
+ connected-prefix-sid-map
+  address-family ipv4
+   10.253.201.1/32 absolute 16003 range 1
+  exit-address-family
+ !
+!
+router ospf 1
+ router-id 10.253.201.1
+ segment-routing area 0.0.0.0 mpls
+ segment-routing mpls
+!
+router bgp 65430
+ bgp log-neighbor-changes
+ no bgp default ipv4-unicast
+ no bgp default route-target filter
+ neighbor 10.231.201.1 remote-as 65430
+ neighbor 10.231.201.1 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.231.201.1 activate
+ exit-address-family
+ !
+ address-family vpnv4
+  neighbor 10.231.201.1 activate
+  neighbor 10.231.201.1 send-community both
+  neighbor 10.231.201.1 next-hop-self all
+ exit-address-family
+ !
+ address-family ipv4 vrf Basic-SR-Handoff
+  redistribute connected
+ exit-address-family
+!

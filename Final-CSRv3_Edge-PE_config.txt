@@ -1,0 +1,156 @@
+
+CSRv3_Edge-PE#show vrf
+  Name                             Default RD            Protocols   Interfaces
+  Basic-SR-Handoff                 65430:3               ipv4        Lo1
+
+
+CSRv3_Edge-PE#ping vrf Basic-SR-Handoff 10.21.6.1
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.21.6.1, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 2/2/4 ms
+
+
+CSRv3_Edge-PE#show ip route vrf Basic-SR-Handoff
+
+Routing Table: Basic-SR-Handoff
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 3 subnets, 2 masks
+B        10.21.6.0/24 [200/0] via 10.231.201.1, 7w0d
+B        10.243.43.1/32 [200/0] via 10.231.201.1, 7w0d
+C        10.253.203.1/32 is directly connected, Loopback1
+
+
+CSRv3_Edge-PE#show ip route
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 10 subnets, 3 masks
+C        10.21.5.0/24 is directly connected, GigabitEthernet1
+L        10.21.5.3/32 is directly connected, GigabitEthernet1
+O        10.231.201.1/32 [110/3] via 10.253.202.1, 7w0d, GigabitEthernet2
+B        10.231.202.0/30 [200/0] via 10.231.201.1, 7w0d
+B        10.231.202.1/32 [200/0] via 10.231.201.1, 7w0d
+O        10.252.201.1/32 [110/2] via 10.253.202.1, 7w0d, GigabitEthernet2
+O        10.252.202.0/30 [110/2] via 10.253.202.1, 7w0d, GigabitEthernet2
+C        10.253.201.1/32 is directly connected, Loopback0
+C        10.253.202.0/30 is directly connected, GigabitEthernet2
+L        10.253.202.2/32 is directly connected, GigabitEthernet2
+      172.10.0.0/32 is subnetted, 1 subnets
+B        172.10.201.1 [200/0] via 10.231.202.1, 7w0d
+
+
+CSRv3_Edge-PE#show run
+<snip>
+hostname CSRv3_Edge-PE
+<snip>
+vrf definition Basic-SR-Handoff
+ rd 65430:3
+ !
+ address-family ipv4
+  route-target export 1201:1201
+  route-target import 1201:1201
+ exit-address-family
+!
+<snip>
+license boot level ax
+<snip>
+interface Loopback0
+ ip address 10.253.201.1 255.255.255.255
+ ip ospf 1 area 0.0.0.0
+!
+interface Loopback1
+ vrf forwarding Basic-SR-Handoff
+ ip address 10.253.203.1 255.255.255.255
+!
+interface GigabitEthernet1
+ description MGMT Network AFDD_SR-MPLS_ACC_DVS
+ ip address 10.21.5.3 255.255.255.0
+ negotiation auto
+ no mop enabled
+ no mop sysid
+!
+interface GigabitEthernet2
+ description To_CSRv2_DC-P
+ ip address 10.253.202.2 255.255.255.252
+ ip ospf 1 area 0.0.0.0
+ negotiation auto
+ no mop enabled
+ no mop sysid
+!
+interface GigabitEthernet3
+ no ip address
+ shutdown
+ negotiation auto
+ no mop enabled
+ no mop sysid
+!
+!
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+ !
+ global-block 16000 23999
+ !
+ connected-prefix-sid-map
+  address-family ipv4
+   10.253.201.1/32 absolute 16003 range 1
+  exit-address-family
+ !
+!
+router ospf 1
+ router-id 10.253.201.1
+ segment-routing area 0.0.0.0 mpls
+ segment-routing mpls
+!
+router bgp 65430
+ bgp log-neighbor-changes
+ no bgp default ipv4-unicast
+ no bgp default route-target filter
+ neighbor 10.231.201.1 remote-as 65430
+ neighbor 10.231.201.1 update-source Loopback0
+ !
+ address-family ipv4
+  neighbor 10.231.201.1 activate
+ exit-address-family
+ !
+ address-family vpnv4
+  neighbor 10.231.201.1 activate
+  neighbor 10.231.201.1 send-community both
+  neighbor 10.231.201.1 next-hop-self all
+ exit-address-family
+ !
+ address-family ipv4 vrf Basic-SR-Handoff
+  redistribute connected
+ exit-address-family
+!
+<snip>

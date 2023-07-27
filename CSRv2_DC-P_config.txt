@@ -1,0 +1,46 @@
+!
+hostname CSRv2_DC-P
+!
+license boot level ax
+!
+interface Loopback0
+ ip address 10.252.201.1 255.255.255.255
+ ip ospf 1 area 0.0.0.0
+!
+interface GigabitEthernet1
+ description MGMT Network AFDD_SR-MPLS_ACC_DVS
+ ip address 10.21.5.2 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet2
+ description To_CSRv1_DC-PE
+ ip address 10.252.202.2 255.255.255.252
+ ip ospf 1 area 0.0.0.0
+ no shutdown
+!
+interface GigabitEthernet3
+ description To-CSRv3_Edge-PE
+ ip address 10.253.202.1 255.255.255.252
+ ip ospf 1 area 0.0.0.0
+ no shutdown
+!
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+ !
+ global-block 16000 23999
+ !
+ connected-prefix-sid-map
+  address-family ipv4
+   10.252.201.1/32 absolute 16002 range 1
+  exit-address-family
+ !
+!
+router ospf 1
+ router-id 10.252.201.1
+ segment-routing area 0.0.0.0 mpls
+ segment-routing mpls
+!

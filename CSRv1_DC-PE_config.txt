@@ -1,0 +1,104 @@
+!
+hostname CSRv1_DC-PE
+!
+vrf definition Basic-SR-Handoff
+ rd 1201:1201
+ !
+ address-family ipv4
+  route-target export 1201:1201
+  route-target import 1201:1201
+  route-target export 1201:1201 stitching
+  route-target import 1201:1201 stitching
+ exit-address-family
+!
+license boot level ax
+!
+interface Loopback0
+ ip address 10.231.201.1 255.255.255.255
+ ip ospf 1201 area 0.0.0.0
+!
+interface Loopback430
+ vrf forwarding Basic-SR-Handoff
+ ip address 10.243.43.1 255.255.255.255
+!
+interface GigabitEthernet1
+ description MGMT Network AFDD_SR-MPLS_ACC_DVS
+ ip address 10.21.5.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet2
+ description To_e1-10_BL202-ACI-BasicSR
+ ip address 10.231.202.2 255.255.255.252
+ mpls bgp forwarding
+ no shutdown
+!
+interface GigabitEthernet3
+ description To-CSRv-2_DC-P
+ ip address 10.252.202.1 255.255.255.252
+ ip ospf 1201 area 0.0.0.0
+ no shutdown
+!
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+ !
+ global-block 16000 23999
+ !
+ connected-prefix-sid-map
+  address-family ipv4
+   10.231.201.1/32 absolute 16001 range 1
+  exit-address-family
+ !
+!
+router ospf 1201
+ router-id 10.231.201.1
+ segment-routing area 0.0.0.0 mpls
+ segment-routing mpls
+!
+router bgp 65430
+ bgp log-neighbor-changes
+ neighbor 10.231.202.1 remote-as 65200
+ neighbor 10.231.202.1 update in labeled-unicast unique
+ neighbor 10.231.202.1 update out labeled-unicast unique
+ neighbor 10.231.202.1 update-source GigabitEthernet2
+ neighbor 10.253.201.1 remote-as 65430
+ neighbor 10.253.201.1 update-source Loopback0
+ neighbor 172.10.201.1 remote-as 65200
+ neighbor 172.10.201.1 ebgp-multihop 6
+ neighbor 172.10.201.1 update-source Loopback0
+ !
+ address-family ipv4
+  redistribute connected
+  redistribute ospf 1201
+  segment-routing mpls
+  neighbor 10.231.202.1 activate
+  neighbor 10.231.202.1 send-community both
+  neighbor 10.231.202.1 soft-reconfiguration inbound
+  neighbor 10.231.202.1 send-label
+  neighbor 10.253.201.1 activate
+  neighbor 172.10.201.1 activate
+ exit-address-family
+ !
+ address-family vpnv4
+  import l2vpn evpn re-originate stitching-rt
+  neighbor 10.253.201.1 activate
+  neighbor 10.253.201.1 send-community both
+  neighbor 10.253.201.1 next-hop-self all
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  import vpnv4 unicast re-originate
+  neighbor 172.10.201.1 activate
+  neighbor 172.10.201.1 send-community both
+  neighbor 172.10.201.1 next-hop-unchanged
+  neighbor 172.10.201.1 soft-reconfiguration inbound
+ exit-address-family
+ !
+ address-family ipv4 vrf Basic-SR-Handoff
+  advertise l2vpn evpn
+  redistribute connected
+ exit-address-family
+!

@@ -1,0 +1,186 @@
+
+CSRv1_DC-PE#show vrf
+  Name                             Default RD            Protocols   Interfaces
+  Basic-SR-Handoff                 1201:1201             ipv4        Lo430
+
+
+CSRv1_DC-PE#ping vrf Basic-SR-Handoff 10.21.6.1
+Type escape sequence to abort.
+Sending 5, 100-byte ICMP Echos to 10.21.6.1, timeout is 2 seconds:
+!!!!!
+Success rate is 100 percent (5/5), round-trip min/avg/max = 2/2/4 ms
+
+
+CSRv1_DC-PE#show ip route vrf Basic-SR-Handoff
+
+Routing Table: Basic-SR-Handoff
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 3 subnets, 2 masks
+B        10.21.6.0/24 [20/0] via 172.10.201.1, 7w0d
+C        10.243.43.1/32 is directly connected, Loopback430
+B        10.253.203.1/32 [200/0] via 10.253.201.1, 7w0d
+
+
+CSRv1_DC-PE#show ip route
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 11 subnets, 3 masks
+C        10.21.5.0/24 is directly connected, GigabitEthernet1
+L        10.21.5.1/32 is directly connected, GigabitEthernet1
+C        10.231.201.1/32 is directly connected, Loopback0
+C        10.231.202.0/30 is directly connected, GigabitEthernet2
+C        10.231.202.1/32 is directly connected, GigabitEthernet2
+L        10.231.202.2/32 is directly connected, GigabitEthernet2
+O        10.252.201.1/32 [110/2] via 10.252.202.2, 7w0d, GigabitEthernet3
+C        10.252.202.0/30 is directly connected, GigabitEthernet3
+L        10.252.202.1/32 is directly connected, GigabitEthernet3
+O        10.253.201.1/32 [110/3] via 10.252.202.2, 7w0d, GigabitEthernet3
+O        10.253.202.0/30 [110/2] via 10.252.202.2, 7w0d, GigabitEthernet3
+      172.10.0.0/32 is subnetted, 1 subnets
+B        172.10.201.1 [20/0] via 10.231.202.1, 7w0d
+
+
+CSRv1_DC-PE#show run
+<snip>
+hostname CSRv1_DC-PE
+<snip>
+vrf definition Basic-SR-Handoff
+ rd 1201:1201
+ !
+ address-family ipv4
+  route-target export 1201:1201
+  route-target import 1201:1201
+  route-target export 1201:1201 stitching
+  route-target import 1201:1201 stitching
+ exit-address-family
+<snikp>
+license boot level ax
+!
+<snip>
+cdp run
+!
+<snip>
+interface Loopback0
+ ip address 10.231.201.1 255.255.255.255
+ ip ospf 1201 area 0.0.0.0
+!
+interface Loopback430
+ vrf forwarding Basic-SR-Handoff
+ ip address 10.243.43.1 255.255.255.255
+!
+interface GigabitEthernet1
+ description MGMT Network AFDD_SR-MPLS_ACC_DVS
+ ip address 10.21.5.1 255.255.255.0
+ negotiation auto
+ no mop enabled
+ no mop sysid
+!
+interface GigabitEthernet2
+ description To_e1-10_BL202-ACI-BasicSR
+ mtu 1550
+ ip address 10.231.202.2 255.255.255.252
+ negotiation auto
+ cdp enable
+ mpls bgp forwarding
+ no mop enabled
+ no mop sysid
+!
+interface GigabitEthernet3
+ description To-CSRv-2_Prouter
+ ip address 10.252.202.1 255.255.255.252
+ ip ospf 1201 area 0.0.0.0
+ negotiation auto
+ no mop enabled
+ no mop sysid
+!
+!
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+ !
+ global-block 16000 23999
+ !
+ connected-prefix-sid-map
+  address-family ipv4
+   10.231.201.1/32 absolute 16001 range 1
+  exit-address-family
+ !
+!
+router ospf 1201
+ router-id 10.231.201.1
+ segment-routing area 0.0.0.0 mpls
+ segment-routing mpls
+!
+router bgp 65430
+ bgp log-neighbor-changes
+ neighbor 10.231.202.1 remote-as 65200
+ neighbor 10.231.202.1 update-source GigabitEthernet2
+ neighbor 10.253.201.1 remote-as 65430
+ neighbor 10.253.201.1 update-source Loopback0
+ neighbor 172.10.201.1 remote-as 65200
+ neighbor 172.10.201.1 ebgp-multihop 6
+ neighbor 172.10.201.1 update-source Loopback0
+ !
+ address-family ipv4
+  redistribute connected
+  redistribute ospf 1201
+  segment-routing mpls
+  neighbor 10.231.202.1 activate
+  neighbor 10.231.202.1 send-community both
+  neighbor 10.231.202.1 soft-reconfiguration inbound
+  neighbor 10.231.202.1 send-label
+  neighbor 10.253.201.1 activate
+  neighbor 172.10.201.1 activate
+ exit-address-family
+ !
+ address-family vpnv4
+  import l2vpn evpn re-originate stitching-rt
+  neighbor 10.253.201.1 activate
+  neighbor 10.253.201.1 send-community both
+  neighbor 10.253.201.1 next-hop-self all
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  import vpnv4 unicast re-originate
+  neighbor 172.10.201.1 activate
+  neighbor 172.10.201.1 send-community both
+  neighbor 172.10.201.1 next-hop-unchanged
+  neighbor 172.10.201.1 soft-reconfiguration inbound
+ exit-address-family
+ !
+ address-family ipv4 vrf Basic-SR-Handoff
+  advertise l2vpn evpn
+  redistribute connected
+ exit-address-family
+!
+<snip>

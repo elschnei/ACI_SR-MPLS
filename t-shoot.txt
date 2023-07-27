@@ -1,0 +1,85 @@
+CSRv1_DC-PE#show ip route vrf Basic-SR-Handoff
+
+Routing Table: Basic-SR-Handoff
+Codes: L - local, C - connected, S - static, R - RIP, M - mobile, B - BGP
+       D - EIGRP, EX - EIGRP external, O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2, m - OMP
+       n - NAT, Ni - NAT inside, No - NAT outside, Nd - NAT DIA
+       i - IS-IS, su - IS-IS summary, L1 - IS-IS level-1, L2 - IS-IS level-2
+       ia - IS-IS inter area, * - candidate default, U - per-user static route
+       H - NHRP, G - NHRP registered, g - NHRP registration summary
+       o - ODR, P - periodic downloaded static route, l - LISP
+       a - application route
+       + - replicated route, % - next hop override, p - overrides from PfR
+       & - replicated local route overrides by connected
+
+Gateway of last resort is not set
+
+      10.0.0.0/8 is variably subnetted, 3 subnets, 2 masks
+B        10.21.6.0/24 [20/0] via 172.10.201.1, 00:25:25
+C        10.243.43.1/32 is directly connected, Loopback430
+B        10.253.203.1/32 [200/0] via 10.253.201.1, 7w0d
+CSRv1_DC-PE#show ip route vrf Basic-SR-Handoff 10.21.6.0
+
+Routing Table: Basic-SR-Handoff
+Routing entry for 10.21.6.0/24
+  Known via "bgp 65430", distance 20, metric 0
+  Tag 65200, type external
+  Last update from 172.10.201.1 00:25:45 ago
+  Routing Descriptor Blocks:
+  * 172.10.201.1 (default), from 172.10.201.1, 00:25:45 ago
+      opaque_ptr 0x7F40F33D39A0
+      Route metric is 0, traffic share count is 1
+      AS Hops 1
+      Route tag 65200
+      MPLS label: 948577
+CSRv1_DC-PE#show ip route vrf Basic-SR-Handoff 172.10.201.1
+
+Routing Table: Basic-SR-Handoff
+% Network not in table
+CSRv1_DC-PE#
+
+
+
+---------------------------------------------------------------------------------
+
+CSRv1_DC-PE#show ip bgp l2vpn evpn neighbors 172.10.201.1 routes
+BGP table version is 6, local router ID is 10.231.201.1
+Status codes: s suppressed, d damped, h history, * valid, > best, i - internal,
+              r RIB-failure, S Stale, m multipath, b backup-path, f RT-Filter,
+              x best-external, a additional-path, c RIB-compressed,
+              t secondary path, L long-lived-stale,
+Origin codes: i - IGP, e - EGP, ? - incomplete
+RPKI validation codes: V valid, I invalid, N Not found
+
+     Network          Next Hop            Metric LocPrf Weight Path
+Route Distinguisher: 202:2818057
+ *>   [5][202:2818057][0][24][10.21.6.0]/17
+                      172.10.201.1             0             0 65200 ?
+
+Total number of prefixes 1
+CSRv1_DC-PE#show ip route 172.10.201.1
+Routing entry for 172.10.201.1/32
+  Known via "bgp 65430", distance 20, metric 0
+  Tag 65200, type external
+  Last update from 10.231.202.1 3w2d ago
+ SR Incoming Label: 16202
+  Routing Descriptor Blocks:
+  * 10.231.202.1, from 10.231.202.1, 3w2d ago
+      opaque_ptr 0x7F41610CA810
+      Route metric is 0, traffic share count is 1
+      AS Hops 1
+      Route tag 65200
+      MPLS label: none
+CSRv1_DC-PE#
+CSRv1_DC-PE#
+CSRv1_DC-PE#show ip route 10.231.202.1
+Routing entry for 10.231.202.1/32
+  Known via "connected", distance 0, metric 0 (connected, via interface)
+  Redistributing via bgp 65430
+  Advertised by bgp 65430
+  Routing Descriptor Blocks:
+  * directly connected, via GigabitEthernet2
+      Route metric is 0, traffic share count is 1
+
